@@ -75,14 +75,17 @@ pip install -r requirements.txt
 # 2. PostgreSQL 데이터베이스 생성
 createdb -U postgres library
 
-# 3. 스키마 생성 (+ 샘플 데이터)
-python init_db.py --sample
+# 3. 접속 정보 설정 (기본값을 쓰면 생략 가능)
+cp .env.example .env
 
-# 4. 프로그램 실행
+# 4. 스키마 생성 (+ 샘플 데이터)
+python -m db.init_db --sample
+
+# 5. 프로그램 실행
 python main.py
 ```
 
-DB 접속 정보는 환경 변수로 변경할 수 있습니다.
+DB 접속 정보와 대출 정책은 `.env` 파일 또는 환경 변수로 변경할 수 있습니다. (환경 변수가 우선)
 
 | 환경 변수 | 기본값 | 설명 |
 | --- | --- | --- |
@@ -91,6 +94,7 @@ DB 접속 정보는 환경 변수로 변경할 수 있습니다.
 | `LIBRARY_DB_NAME` | `library` | DB 이름 |
 | `LIBRARY_DB_USER` | `postgres` | DB 사용자 |
 | `LIBRARY_DB_PASSWORD` | `postgres` | DB 비밀번호 |
+| `LIBRARY_POOL_MIN` / `LIBRARY_POOL_MAX` | `1` / `5` | 커넥션 풀 크기 |
 | `LIBRARY_LOAN_DAYS` | `14` | 기본 대출 기간(일) |
 | `LIBRARY_MAX_LOANS` | `5` | 1인 최대 대출 권수 |
 
@@ -98,16 +102,25 @@ DB 접속 정보는 환경 변수로 변경할 수 있습니다.
 
 ```mermaid
 flowchart LR
-    GUI["GUI 계층<br/>library/gui"] --> Service["Service 계층<br/>library/service<br/>(입력 검증 · 트랜잭션)"]
-    Service --> Repository["Repository 계층<br/>library/repository<br/>(SQL)"]
-    Repository --> DB[("PostgreSQL")]
+    T["templates<br/>(Tkinter 화면)"] --> S["services<br/>(업무 규칙 · 트랜잭션)"]
+    T -. 입력값 .-> SC["schemas<br/>(요청 검증 · 응답)"]
+    S --> SC
+    S --> C["crud<br/>(SQL)"]
+    C --> M["models<br/>(테이블 행)"]
+    C --> DB[("PostgreSQL")]
+    S --> D["db<br/>(커넥션 풀 · transaction)"]
+    D --> DB
 ```
 
-| 계층 | 역할 |
+| 폴더 | 역할 |
 | --- | --- |
-| GUI | Tkinter 화면 구성, 사용자 입력 전달, 오류 메시지 안내 |
-| Service | 입력값 검증, 업무 규칙 확인, `transaction()` 으로 commit/rollback 경계 관리 |
-| Repository | 테이블별 SQL 실행 (파라미터 바인딩으로 SQL Injection 방지) |
+| `core` | 설정(`config`), 상수(`constants`), 로거, 도메인 예외, 화면 공통 스타일(`templates.py`) |
+| `db` | 커넥션 풀·`transaction()`(commit/rollback), 스키마/샘플 SQL, 초기화 스크립트 |
+| `models` | 테이블 한 행을 표현하는 dataclass (`Book`, `Member`, `Loan`) |
+| `schemas` | 화면 입력값 검증 요청 스키마(`BookRequest` 등)와 처리 결과·통계 응답 스키마 |
+| `crud` | 테이블별 SQL 실행 (파라미터 바인딩으로 SQL Injection 방지), 결과를 model/schema 로 변환 |
+| `services` | 업무 규칙 검사, 트랜잭션 경계 관리, 처리 로그 기록 |
+| `templates` | Tkinter 화면(View)과 공통 위젯 |
 
 ## 대출 규칙
 
@@ -123,39 +136,62 @@ flowchart LR
 
 | 탭 | 기능 |
 | --- | --- |
-| 도서 관리 | 도서 등록/수정/삭제, 전체·제목·저자·ISBN·출판사·분류 검색, 대출 가능 권수 표시 |
-| 대출자 관리 | 대출자 등록/수정/삭제, 학번·이름·학과·연락처 검색, 대출중/연체 권수 표시 |
+| 도서 관리 | 도서 등록/수정/삭제, 전체·제목·저자·ISBN·출판사·분류 검색, 대출 가능 권수 표시, 도서별 대출 이력 팝업 |
+| 대출자 관리 | 대출자 등록/수정/삭제, 학번·이름·학과·연락처 검색, 대출중/연체 권수 표시, 대출자별 대출 이력 팝업 |
 | 대출 / 반납 | 도서·대출자 선택 후 대출, 반납 처리, 상태 필터(전체/미반납/대출중/연체/반납완료) 및 키워드 검색 |
 | 통계 | 요약 지표, 최근 6개월 대출/반납 추이 차트, 분류별 통계, 인기 도서·다독 대출자 TOP 5 |
+
+> 도서/대출자 목록에서 행을 **더블클릭**하거나 **대출 이력 보기** 버튼을 누르면 이력 팝업이 열립니다.
 
 ## 프로젝트 구조
 
 ```
 python-gui-project/
-├── main.py                     # 프로그램 실행 진입점
-├── init_db.py                  # 스키마 생성 / 샘플 데이터 입력
+├── main.py                      # 프로그램 실행 진입점
 ├── requirements.txt
-└── library/
-    ├── config.py               # DB 접속 정보, 대출 정책
-    ├── db.py                   # 커넥션 풀, transaction()
-    ├── exceptions.py           # 도메인 예외
-    ├── schema.sql
-    ├── sample_data.sql
-    ├── repository/             # SQL 실행
-    │   ├── book_repository.py
-    │   ├── member_repository.py
-    │   ├── loan_repository.py
-    │   └── stats_repository.py
-    ├── service/                # 입력 검증, 업무 규칙, 트랜잭션
-    │   ├── book_service.py
-    │   ├── member_service.py
-    │   ├── loan_service.py
-    │   └── stats_service.py
-    └── gui/                    # Tkinter 화면
-        ├── app.py
-        ├── widgets.py
-        ├── book_tab.py
-        ├── member_tab.py
-        ├── loan_tab.py
-        └── stats_tab.py
+├── .env.example                 # 접속 정보 예시 (.env 로 복사해 사용)
+├── core/
+│   ├── config.py                # .env / 환경 변수 → settings
+│   ├── exceptions.py            # LibraryError, ValidationError, NotFoundError
+│   ├── logger.py                # 공용 로거
+│   ├── templates.py             # 화면 공통 스타일(테마, 폰트)
+│   └── constants/
+│       ├── loan.py              # 대출 상태, 필터, 기간 범위, 통계 설정
+│       └── ui.py                # 창 크기, 색상, 폰트 크기
+├── db/
+│   ├── session.py               # 커넥션 풀, transaction()
+│   ├── init_db.py               # python -m db.init_db [--sample]
+│   ├── schema.sql
+│   └── sample_data.sql
+├── models/
+│   ├── book_model.py
+│   ├── member_model.py
+│   └── loan_model.py
+├── schemas/
+│   ├── common_schema.py         # 공통 입력값 검증 함수
+│   ├── book_schema.py
+│   ├── member_schema.py
+│   ├── loan_schema.py
+│   └── stats_schema.py
+├── crud/
+│   ├── common_crud.py           # LIKE 패턴, 검색 조건 생성
+│   ├── book_crud.py
+│   ├── member_crud.py
+│   ├── loan_crud.py
+│   └── stats_crud.py
+├── services/
+│   ├── book_service.py
+│   ├── member_service.py
+│   ├── loan_service.py
+│   └── stats_service.py
+└── templates/
+    ├── main_window.py           # 탭 기반 메인 윈도우
+    ├── widgets.py               # DataTable, FormFields, SearchBar, SearchableCombobox
+    ├── history_dialog.py        # 도서/대출자 대출 이력 팝업
+    ├── book_view.py
+    ├── member_view.py
+    ├── loan_view.py
+    └── stats_view.py
 ```
+
+> `__init__.py` 없이 네임스페이스 패키지로 구성되어 있으므로, 반드시 프로젝트 루트에서 실행합니다.
