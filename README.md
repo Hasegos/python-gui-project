@@ -77,6 +77,9 @@ createdb -U postgres library
 
 # 3. 스키마 생성 (+ 샘플 데이터)
 python init_db.py --sample
+
+# 4. 프로그램 실행
+python main.py
 ```
 
 DB 접속 정보는 환경 변수로 변경할 수 있습니다.
@@ -90,3 +93,18 @@ DB 접속 정보는 환경 변수로 변경할 수 있습니다.
 | `LIBRARY_DB_PASSWORD` | `postgres` | DB 비밀번호 |
 | `LIBRARY_LOAN_DAYS` | `14` | 기본 대출 기간(일) |
 | `LIBRARY_MAX_LOANS` | `5` | 1인 최대 대출 권수 |
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+    GUI["GUI 계층<br/>library/gui"] --> Service["Service 계층<br/>library/service<br/>(입력 검증 · 트랜잭션)"]
+    Service --> Repository["Repository 계층<br/>library/repository<br/>(SQL)"]
+    Repository --> DB[("PostgreSQL")]
+```
+
+| 계층 | 역할 |
+| --- | --- |
+| GUI | Tkinter 화면 구성, 사용자 입력 전달, 오류 메시지 안내 |
+| Service | 입력값 검증, 업무 규칙 확인, `transaction()` 으로 commit/rollback 경계 관리 |
+| Repository | 테이블별 SQL 실행 (파라미터 바인딩으로 SQL Injection 방지) |
