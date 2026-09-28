@@ -6,7 +6,7 @@ import psycopg2
 
 from core.config import settings
 from core.logger import get_logger
-from db.init_db import init_schema
+from db.init_db import init_database
 from db.session import check_connection
 from templates.main_window import MainWindow
 
@@ -18,7 +18,7 @@ logger = get_logger("main")
 # ─────────────────────────────────────
 def main() -> int:
     """
-    DB 연결을 확인하고 스키마를 준비한 뒤 메인 윈도우를 실행한다.
+    DB 연결을 확인하고 테이블 생성(비어 있으면 샘플 데이터 입력) 후 메인 윈도우를 실행한다.
 
     DB 에 연결할 수 없으면 접속 정보와 함께 안내 메시지를 띄우고 종료한다.
 
@@ -27,7 +27,7 @@ def main() -> int:
     """
     try:
         check_connection()
-        init_schema()
+        init_database()
     except psycopg2.Error as e:
         logger.error("DB 연결 실패: %s", e)
         # 메인 윈도우 없이 오류 대화상자만 띄우기 위해 빈 루트 창을 숨김
