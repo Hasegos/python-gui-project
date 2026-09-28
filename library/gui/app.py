@@ -6,6 +6,7 @@ from library import db
 from library.gui.book_tab import BookTab
 from library.gui.loan_tab import LoanTab
 from library.gui.member_tab import MemberTab
+from library.gui.stats_tab import StatsTab
 from library.gui.widgets import apply_style
 
 # 탭 목록: (화면 클래스, 탭 제목)
@@ -13,6 +14,7 @@ TABS = [
     (BookTab, "도서 관리"),
     (MemberTab, "대출자 관리"),
     (LoanTab, "대출 / 반납"),
+    (StatsTab, "통계"),
 ]
 
 
