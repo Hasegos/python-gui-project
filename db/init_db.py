@@ -4,6 +4,7 @@ from pathlib import Path
 
 import psycopg2
 
+from core.config import settings
 from core.logger import get_logger
 from db.session import close_pool, transaction
 
@@ -43,7 +44,38 @@ def load_sample_data() -> None:
 
 
 # ─────────────────────────────────────
-# 3. 명령행 실행
+# 3. 빈 DB 여부 확인
+# ─────────────────────────────────────
+def is_empty() -> bool:
+    """
+    도서와 대출자가 한 건도 없는지 확인한다.
+
+    Returns:
+        book, member 테이블이 모두 비어 있으면 True
+    """
+    with transaction() as cur:
+        cur.execute(
+            "SELECT NOT EXISTS (SELECT 1 FROM book) AND NOT EXISTS (SELECT 1 FROM member) AS empty"
+        )
+        return cur.fetchone()["empty"]
+
+
+# ─────────────────────────────────────
+# 4. 프로그램 시작 시 자동 초기화
+# ─────────────────────────────────────
+def init_database() -> None:
+    """
+    테이블을 자동 생성하고, DB 가 비어 있으면 샘플 데이터를 입력한다.
+
+    샘플 자동 입력은 settings.AUTO_LOAD_SAMPLE(LIBRARY_AUTO_SAMPLE)로 끌 수 있다.
+    """
+    init_schema()
+    if settings.AUTO_LOAD_SAMPLE and is_empty():
+        load_sample_data()
+
+
+# ─────────────────────────────────────
+# 5. 명령행 실행
 # ─────────────────────────────────────
 def main() -> int:
     """

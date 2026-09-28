@@ -52,8 +52,14 @@ class Settings:
     LOAN_DAYS           : int = int(os.getenv("LIBRARY_LOAN_DAYS", "14"))  # 기본 대출 기간 (일)
     MAX_LOANS_PER_MEMBER: int = int(os.getenv("LIBRARY_MAX_LOANS", "5"))   # 1인 최대 대출 권수
 
+    # ───────────────────────────
+    # 3. 초기화
+    # ───────────────────────────
+    # 실행 시 DB 가 비어 있으면 샘플 데이터를 자동으로 입력할지 여부
+    AUTO_LOAD_SAMPLE: bool = os.getenv("LIBRARY_AUTO_SAMPLE", "true").lower() in ("1", "true", "yes")
+
     # ──────────────────────────
-    # 3. 계산된 프로퍼티 (접속 정보)
+    # 4. 계산된 프로퍼티 (접속 정보)
     # ──────────────────────────
     @property
     def DB_CONNECT_ARGS(self) -> dict:

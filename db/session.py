@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 
+import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
 
@@ -24,13 +25,41 @@ def get_pool() -> SimpleConnectionPool:
     """
     global _pool
     if _pool is None:
-        _pool = SimpleConnectionPool(
-            minconn=settings.POOL_MIN_CONN,
-            maxconn=settings.POOL_MAX_CONN,
-            **settings.DB_CONNECT_ARGS,
-        )
+        try:
+            _pool = SimpleConnectionPool(
+                minconn=settings.POOL_MIN_CONN,
+                maxconn=settings.POOL_MAX_CONN,
+                **settings.DB_CONNECT_ARGS,
+            )
+        except UnicodeDecodeError as e:
+            # 한글 Windows 용 PostgreSQL 은 접속 실패 메시지(비밀번호 오류 등)를 CP949 로 보내
+            # psycopg2 가 UTF-8 로 해석하다 실패한다. 원문을 CP949 로 다시 읽어 접속 오류로 바꿔 던진다.
+            raise psycopg2.OperationalError(_decode_server_message(e)) from None
         logger.info("커넥션 풀 생성: %s", settings.DB_DISPLAY)
     return _pool
+
+
+# ─────────────────────────────────────
+# 1-1. 서버 오류 메시지 복원
+# ─────────────────────────────────────
+def _decode_server_message(error: UnicodeDecodeError) -> str:
+    """
+    UTF-8 해석에 실패한 서버 메시지를 CP949 로 다시 디코딩한다.
+
+    Args:
+        error: psycopg2 접속 중 발생한 UnicodeDecodeError
+    Returns:
+        복원한 서버 오류 메시지. 복원할 수 없으면 기본 안내 문구.
+    """
+    raw = error.object if isinstance(error.object, (bytes, bytearray)) else b""
+    for encoding in ("cp949", "utf-8"):
+        try:
+            message = bytes(raw).decode(encoding).strip()
+            if message:
+                return message
+        except UnicodeDecodeError:
+            continue
+    return "DB 접속에 실패했습니다. 비밀번호, 포트, DB 이름을 확인해 주세요."
 
 
 # ─────────────────────────────────────
