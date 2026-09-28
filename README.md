@@ -28,3 +28,65 @@ DB 설계·CRUD·트랜잭션 처리를 GUI 환경에서 실습하는 것을 목
 | `master` | 배포(안정) 브랜치 |
 | `dev` | 개발 통합 브랜치 |
 | `feature/gui-기능` | 기능 단위 개발 브랜치, 완료 후 `dev`로 PR/merge |
+
+## ERD
+
+```mermaid
+erDiagram
+    BOOK ||--o{ LOAN : "대출된다"
+    MEMBER ||--o{ LOAN : "대출한다"
+    BOOK {
+        int book_id PK
+        varchar isbn UK
+        varchar title
+        varchar author
+        varchar publisher
+        int published_year
+        varchar category
+        int quantity "보유 권수"
+    }
+    MEMBER {
+        int member_id PK
+        varchar student_no UK
+        varchar name
+        varchar department
+        varchar phone
+        varchar email
+    }
+    LOAN {
+        int loan_id PK
+        int book_id FK
+        int member_id FK
+        date loan_date
+        date due_date
+        date return_date "NULL = 미반납"
+    }
+```
+
+- 대출 상태는 별도 컬럼 없이 계산: `return_date` 존재 → 반납완료 / `due_date < 오늘` → 연체 / 그 외 → 대출중
+- 대출 가능 권수 = `book.quantity - 미반납 대출 건수`
+
+## 실행 방법
+
+```bash
+# 1. 의존성 설치
+pip install -r requirements.txt
+
+# 2. PostgreSQL 데이터베이스 생성
+createdb -U postgres library
+
+# 3. 스키마 생성 (+ 샘플 데이터)
+python init_db.py --sample
+```
+
+DB 접속 정보는 환경 변수로 변경할 수 있습니다.
+
+| 환경 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `LIBRARY_DB_HOST` | `localhost` | DB 호스트 |
+| `LIBRARY_DB_PORT` | `5432` | DB 포트 |
+| `LIBRARY_DB_NAME` | `library` | DB 이름 |
+| `LIBRARY_DB_USER` | `postgres` | DB 사용자 |
+| `LIBRARY_DB_PASSWORD` | `postgres` | DB 비밀번호 |
+| `LIBRARY_LOAN_DAYS` | `14` | 기본 대출 기간(일) |
+| `LIBRARY_MAX_LOANS` | `5` | 1인 최대 대출 권수 |
