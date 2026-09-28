@@ -75,15 +75,15 @@ pip install -r requirements.txt
 # 2. PostgreSQL 데이터베이스 생성
 createdb -U postgres library
 
-# 3. 접속 정보 설정 (기본값을 쓰면 생략 가능)
-cp .env.example .env
+# 3. 접속 정보 설정 (LIBRARY_DB_PASSWORD 를 설치 시 정한 postgres 비밀번호로 수정)
+cp .env.example .env          # Windows: copy .env.example .env
 
-# 4. 스키마 생성 (+ 샘플 데이터)
-python -m db.init_db --sample
-
-# 5. 프로그램 실행
+# 4. 프로그램 실행 (테이블 자동 생성, DB 가 비어 있으면 샘플 데이터 자동 입력)
 python main.py
 ```
+
+- 테이블만 따로 만들거나 샘플 데이터를 수동으로 넣으려면 `python -m db.init_db [--sample]` 을 실행합니다.
+- 한글 Windows 용 PostgreSQL 은 접속 오류 메시지를 CP949 로 보내 `UnicodeDecodeError` 가 발생할 수 있어, 이를 원래 오류 메시지(예: 비밀번호 인증 실패)로 복원해 안내합니다.
 
 DB 접속 정보와 대출 정책은 `.env` 파일 또는 환경 변수로 변경할 수 있습니다. (환경 변수가 우선)
 
@@ -97,6 +97,7 @@ DB 접속 정보와 대출 정책은 `.env` 파일 또는 환경 변수로 변�
 | `LIBRARY_POOL_MIN` / `LIBRARY_POOL_MAX` | `1` / `5` | 커넥션 풀 크기 |
 | `LIBRARY_LOAN_DAYS` | `14` | 기본 대출 기간(일) |
 | `LIBRARY_MAX_LOANS` | `5` | 1인 최대 대출 권수 |
+| `LIBRARY_AUTO_SAMPLE` | `true` | 실행 시 DB 가 비어 있으면 샘플 데이터 자동 입력 |
 
 ## 아키텍처
 
@@ -160,7 +161,7 @@ python-gui-project/
 │       └── ui.py                # 창 크기, 색상, 폰트 크기
 ├── db/
 │   ├── session.py               # 커넥션 풀, transaction()
-│   ├── init_db.py               # python -m db.init_db [--sample]
+│   ├── init_db.py               # 테이블 자동 생성, 샘플 데이터 입력
 │   ├── schema.sql
 │   └── sample_data.sql
 ├── models/
