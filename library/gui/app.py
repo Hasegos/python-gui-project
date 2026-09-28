@@ -4,6 +4,7 @@ from tkinter import ttk
 
 from library import db
 from library.gui.book_tab import BookTab
+from library.gui.loan_tab import LoanTab
 from library.gui.member_tab import MemberTab
 from library.gui.widgets import apply_style
 
@@ -11,6 +12,7 @@ from library.gui.widgets import apply_style
 TABS = [
     (BookTab, "도서 관리"),
     (MemberTab, "대출자 관리"),
+    (LoanTab, "대출 / 반납"),
 ]
 
 
@@ -31,13 +33,14 @@ class LibraryApp(tk.Tk):
         self.minsize(1000, 600)
         apply_style(self)
 
+        # 상태 표시줄을 먼저 배치해 창이 작아져도 가려지지 않도록 한다.
+        self.status_var = tk.StringVar(value="준비")
+        ttk.Label(self, textvariable=self.status_var, anchor="w", padding=(10, 4)).pack(side="bottom", fill="x")
+
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=8, pady=(8, 0))
         for tab_class, title in TABS:
             self.notebook.add(tab_class(self.notebook, self.set_status), text=f"  {title}  ")
-
-        self.status_var = tk.StringVar(value="준비")
-        ttk.Label(self, textvariable=self.status_var, anchor="w", padding=(10, 4)).pack(fill="x")
 
         # 탭을 전환할 때마다 최신 데이터로 갱신 (다른 탭에서 변경된 내용 반영)
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)

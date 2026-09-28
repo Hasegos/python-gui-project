@@ -243,3 +243,44 @@ class FormFields(ttk.Frame):
     def focus_first(self) -> None:
         """첫 번째 입력란에 포커스를 둔다."""
         next(iter(self.widgets.values())).focus_set()
+
+
+# ─────────────────────────────────────
+# 5. 검색 가능한 Combobox
+# ─────────────────────────────────────
+class SearchableCombobox(ttk.Combobox):
+    """
+    입력한 글자로 선택 목록을 필터링하는 Combobox.
+
+    set_options({표시 문자열: 값}) 으로 선택지를 설정하고, value() 로 선택된 값을 얻는다.
+    """
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        # 주의: ttk 내부 메서드(_options)와 이름이 겹치지 않도록 _choices 사용
+        self._choices: dict[str, object] = {}
+        self.bind("<KeyRelease>", self._on_key)
+
+    def set_options(self, options: dict) -> None:
+        """
+        선택지를 교체한다. 현재 입력값이 새 선택지에 없으면 비운다.
+
+        Args:
+            options: {표시 문자열: 값} dict
+        """
+        self._choices = dict(options)
+        self.configure(values=list(self._choices))
+        if self.get() not in self._choices:
+            self.set("")
+
+    def value(self):
+        """선택된 항목의 값을 반환한다. 목록에 없는 문자열이면 None."""
+        return self._choices.get(self.get())
+
+    def _on_key(self, event) -> None:
+        """키 입력마다 입력 글자를 포함하는 항목만 남긴다. (방향키 등 이동 키는 제외)"""
+        if event.keysym in ("Up", "Down", "Return", "Escape", "Tab"):
+            return
+        keyword = self.get().strip().lower()
+        matches = [label for label in self._choices if keyword in label.lower()]
+        self.configure(values=matches)
