@@ -118,3 +118,44 @@ flowchart LR
 | 연체자 제한 | 연체중인 도서가 있으면 반납 전까지 대출 불가 |
 | 중복 대출 | 같은 대출자가 동일 도서를 반납 전에 다시 대출 불가 |
 | 동시성 | 대출 트랜잭션에서 도서 → 대출자 순서로 `SELECT ... FOR UPDATE` 잠금 후 검사 |
+
+## 화면 구성
+
+| 탭 | 기능 |
+| --- | --- |
+| 도서 관리 | 도서 등록/수정/삭제, 전체·제목·저자·ISBN·출판사·분류 검색, 대출 가능 권수 표시 |
+| 대출자 관리 | 대출자 등록/수정/삭제, 학번·이름·학과·연락처 검색, 대출중/연체 권수 표시 |
+| 대출 / 반납 | 도서·대출자 선택 후 대출, 반납 처리, 상태 필터(전체/미반납/대출중/연체/반납완료) 및 키워드 검색 |
+| 통계 | 요약 지표, 최근 6개월 대출/반납 추이 차트, 분류별 통계, 인기 도서·다독 대출자 TOP 5 |
+
+## 프로젝트 구조
+
+```
+python-gui-project/
+├── main.py                     # 프로그램 실행 진입점
+├── init_db.py                  # 스키마 생성 / 샘플 데이터 입력
+├── requirements.txt
+└── library/
+    ├── config.py               # DB 접속 정보, 대출 정책
+    ├── db.py                   # 커넥션 풀, transaction()
+    ├── exceptions.py           # 도메인 예외
+    ├── schema.sql
+    ├── sample_data.sql
+    ├── repository/             # SQL 실행
+    │   ├── book_repository.py
+    │   ├── member_repository.py
+    │   ├── loan_repository.py
+    │   └── stats_repository.py
+    ├── service/                # 입력 검증, 업무 규칙, 트랜잭션
+    │   ├── book_service.py
+    │   ├── member_service.py
+    │   ├── loan_service.py
+    │   └── stats_service.py
+    └── gui/                    # Tkinter 화면
+        ├── app.py
+        ├── widgets.py
+        ├── book_tab.py
+        ├── member_tab.py
+        ├── loan_tab.py
+        └── stats_tab.py
+```
