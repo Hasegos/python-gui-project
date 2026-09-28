@@ -92,8 +92,9 @@ class BarChart(tk.Canvas):
         plot_w = width - p["left"] - p["right"]
         plot_h = height - p["top"] - p["bottom"]
         max_value = max(max(d.loans, d.returns) for d in self.data)
-        # 눈금이 정수로 떨어지도록 최대값을 4의 배수로 올림
-        axis_max = max(4, -(-max_value // 4) * 4)
+        # 가장 높은 막대 위 값 라벨이 범례와 겹치지 않도록 여유(+1)를 두고,
+        # 눈금이 정수로 떨어지도록 4의 배수로 올림
+        axis_max = max(4, -(-(max_value + 1) // 4) * 4)
 
         # ─────────────────────────────
         # 2-1. 가로 눈금선 + 값 라벨
